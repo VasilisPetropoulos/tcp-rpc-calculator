@@ -1,0 +1,6 @@
+# Αγνόησε τα object files
+*.o
+
+# Αγνόησε τα τελικά εκτελέσιμα αρχεία
+calc_client
+calc_server
