@@ -6,30 +6,48 @@
 
 #include "calc.h"
 
-
 void
 calc_prog_1(char *host)
 {
 	CLIENT *clnt;
-	float  *result_1;
-	a_Y  avg_1_arg;
-	int  *result_2;
-	a_Y  max_min_1_arg;
-	a_mul_Y  *result_3;
-	a_Y  mul_a_y_1_arg;
+
+	float  *result_1;	// Float number
+	a_Y  avg_1_arg;	// struct a_Y
+
+	int  *result_2;	// Array of 2 integer numbers
+	a_Y  max_min_1_arg; // struct a_Y
+
+	a_mul_Y  *result_3;	// Vector of n float numbers
+	a_Y  mul_a_y_1_arg; // struct a_Y
 
 #ifndef	DEBUG
-	clnt = clnt_create (host, CALC_PROG, CALC_VERSION, "udp");
+	clnt = clnt_create (host, CALC_PROG, CALC_VERSION, "tcp");
 	if (clnt == NULL) {
 		clnt_pcreateerror (host);
 		exit (1);
 	}
 #endif	/* DEBUG */
 
+	avg_1_arg.a = 0.5;
+	avg_1_arg.Y.Y_len = 3;
+	avg_1_arg.Y.Y_val = (int *)malloc(3 * sizeof(int));
+	avg_1_arg.Y.Y_val[0] = 6;
+	avg_1_arg.Y.Y_val[0] = 5;
+	avg_1_arg.Y.Y_val[0] = 6;
+
+
+
 	result_1 = avg_1(&avg_1_arg, clnt);
 	if (result_1 == (float *) NULL) {
 		clnt_perror (clnt, "call failed");
 	}
+	else {
+		printf("AVG function was called");
+	}
+
+	free(avg_1_arg.Y.Y_val);
+
+
 	result_2 = max_min_1(&max_min_1_arg, clnt);
 	if (result_2 == (int *) NULL) {
 		clnt_perror (clnt, "call failed");
@@ -38,14 +56,13 @@ calc_prog_1(char *host)
 	if (result_3 == (a_mul_Y *) NULL) {
 		clnt_perror (clnt, "call failed");
 	}
-#ifndef	DEBUG
+#ifndef	DEBUG 
 	clnt_destroy (clnt);
 #endif	 /* DEBUG */
 }
 
 
-int
-main (int argc, char *argv[])
+int main (int argc, char *argv[])
 {
 	char *host;
 

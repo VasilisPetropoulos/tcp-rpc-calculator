@@ -5,15 +5,24 @@
  */
 
 #include "calc.h"
+#include <stdlib.h>
 
 float *
 avg_1_svc(a_Y *argp, struct svc_req *rqstp)
 {
 	static float  result;
+	float sum = 0.0;
 
-	/*
-	 * insert server code here
-	 */
+	printf("Average function was called...\n");
+	if (argp->Y.Y_len == 0) {
+		printf("Error: Vector Y is empty...\n");
+		return NULL;
+	}
+
+	for (int i = 0; i < argp->Y.Y_len; i++) {
+		sum += argp->Y.Y_val[i];
+	}
+	result = sum / argp->Y.Y_len;
 
 	return &result;
 }
@@ -21,23 +30,54 @@ avg_1_svc(a_Y *argp, struct svc_req *rqstp)
 int *
 max_min_1_svc(a_Y *argp, struct svc_req *rqstp)
 {
-	static int  result;
+	printf("Max/Min function was called...\n");
 
-	/*
-	 * insert server code here
-	 */
+	// Check if array Y from client is empty
+	if (argp->Y.Y_len == 0) {
+		printf("Error: Vector Y is empty...\n");
+		return NULL;
+	}
 
-	return &result;
+	static int  result[2];
+	int max = argp->Y.Y_val[0];
+	int min = argp->Y.Y_val[0];
+	
+	for (int i = 1; i < argp->Y.Y_len; i++) {
+		if (max < argp->Y.Y_val[i]) {
+			max = argp->Y.Y_val[i];
+		}
+
+		if (min > argp->Y.Y_val[i]) {
+			min = argp->Y.Y_val[i];
+		}
+	}
+
+	result[0] = max;
+	result[1] = min;
+
+	return result;
 }
 
 a_mul_Y *
 mul_a_y_1_svc(a_Y *argp, struct svc_req *rqstp)
 {
-	static a_mul_Y  result;
+	printf("Mul function was called...\n");
 
-	/*
-	 * insert server code here
-	 */
+	static a_mul_Y  result;
+	if (result.a_mul_Y_val != NULL) {
+		free(result.a_mul_Y_val);
+	}
+
+	result.a_mul_Y_len = argp->Y.Y_len;
+	result.a_mul_Y_val = (float *)malloc(result.a_mul_Y_len * sizeof(float));
+	if (!result.a_mul_Y_val) {
+		printf("Memory allocation error...\n");
+		return NULL;
+	}
+
+	for (int i = 0; i < argp->Y.Y_len; i++) {
+		result.a_mul_Y_val[i] = argp->a * argp->Y.Y_val[i];
+	}
 
 	return &result;
 }
