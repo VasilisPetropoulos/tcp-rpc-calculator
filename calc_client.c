@@ -5,72 +5,234 @@
  */
 
 #include "calc.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <pthread.h>
+
+void error(char *msg) {
+    perror(msg);
+    exit(1);
+}
+
+typedef struct {
+	int sockfd;
+	char rpc_host[300];
+} thread_server;
 
 void
-calc_prog_1(char *host)
+calc_prog_1(char *host, int new_sockfd)
 {
 	CLIENT *clnt;
-
+	// Variables that will be initialized with the received values from tcp client
+	float a;
+    int n;
+    int *Y = NULL;
+    char choice;
+	// Variables for client handling
+	int bytes;
+	// Variables for rpc
 	float  *result_1;	// Float number
 	a_Y  avg_1_arg;	// struct a_Y
-
-	int  *result_2;	// Array of 2 integer numbers
+	int  *result_2;	// Will be used as array of 2 integer numbers
 	a_Y  max_min_1_arg; // struct a_Y
-
 	a_mul_Y  *result_3;	// Vector of n float numbers
 	a_Y  mul_a_y_1_arg; // struct a_Y
 
-#ifndef	DEBUG
+
+
+	#ifndef	DEBUG
+	// Create client
 	clnt = clnt_create (host, CALC_PROG, CALC_VERSION, "tcp");
 	if (clnt == NULL) {
 		clnt_pcreateerror (host);
 		exit (1);
 	}
-#endif	/* DEBUG */
+	#endif	/* DEBUG */
 
-	avg_1_arg.a = 0.5;
-	avg_1_arg.Y.Y_len = 3;
-	avg_1_arg.Y.Y_val = (int *)malloc(3 * sizeof(int));
-	avg_1_arg.Y.Y_val[0] = 6;
-	avg_1_arg.Y.Y_val[0] = 5;
-	avg_1_arg.Y.Y_val[0] = 6;
+	// Read user's data
+	while (1) {
+		// Read user's choice
+		bytes = read(new_sockfd, &choice, sizeof(char));
+		if (choice == 'q') {
+			printf("Client quited...\n");
+			break;
+		}
+		// If user's choice is '3' socket server reads float number a
+		if (choice == '3') {
+			read(new_sockfd, &a, sizeof(float));
+		}
 
+		// Read number n and vector Y elements
+		read(new_sockfd, &n, sizeof(int));
+		// Allocate memory for vector Y
+		Y = (int *)malloc(n * sizeof(int));
+		if (!Y) {
+			printf("Memory allocation error...\n");
+			break;
+		}
+	
+		// Receive vector Y
+		read(new_sockfd, Y, n*sizeof(int));
+		
 
+		printf("\nData received:\nChoice: %c\nNumber of Y elements: %d\n", choice, n);
+	
 
-	result_1 = avg_1(&avg_1_arg, clnt);
-	if (result_1 == (float *) NULL) {
-		clnt_perror (clnt, "call failed");
+		if (choice == '1') {
+			// Initialize length and value of vector Y to avg_1_arg
+			avg_1_arg.Y.Y_len = n;
+			avg_1_arg.Y.Y_val = Y;
+			
+			// Call rpc function avg_1
+			result_1 = avg_1(&avg_1_arg, clnt);
+			if (result_1 == (float *) NULL) {
+				clnt_perror (clnt, "call failed");
+			}
+			else {
+				printf("AVG function was called\n");
+				// Sends result_1 to new_sockfd
+				write(new_sockfd, result_1, sizeof(float));
+			}
+		}
+
+		else if (choice == '2') {
+			// Initialize length and value of vector Y to avg_1_arg
+			max_min_1_arg.Y.Y_len = n;
+			max_min_1_arg.Y.Y_val = Y;
+
+			result_2 = max_min_1(&max_min_1_arg, clnt);
+			if (result_2 == (int *) NULL) {
+				clnt_perror (clnt, "call failed");
+			}
+			else {
+				printf("Max/Min function was called\n");
+				write(new_sockfd, result_2, 2*sizeof(int));
+			}
+		}
+
+		else if (choice == '3') {
+			mul_a_y_1_arg.a = a;
+			mul_a_y_1_arg.Y.Y_len = n;
+			mul_a_y_1_arg.Y.Y_val = Y;
+
+			result_3 = mul_a_y_1(&mul_a_y_1_arg, clnt);
+			if (result_3 == (a_mul_Y *) NULL) {
+				clnt_perror (clnt, "call failed");
+			}
+			else {
+				printf("Product function was called\n");
+				write(new_sockfd, result_3->a_mul_Y_val, result_3->a_mul_Y_len*sizeof(float));
+			}
+		}
+
+		free(Y);
+		Y = NULL;
 	}
-	else {
-		printf("AVG function was called");
-	}
+	
+	
+	#ifndef	DEBUG 
+		clnt_destroy (clnt);
+	#endif	 /* DEBUG */
+}
 
-	free(avg_1_arg.Y.Y_val);
+void *handle_function(void *argument) {
+	char rpc_host[300];
+	// Cast argument to thread_server structure
+	thread_server *thread_s = (thread_server *)argument;
+	// Initialize thread_s values
+	int new_sockfd = thread_s->sockfd;
 
+	// Get rpc host from stucture to local buffer rpc[300]
+	strcpy(rpc_host, thread_s->rpc_host);
 
-	result_2 = max_min_1(&max_min_1_arg, clnt);
-	if (result_2 == (int *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_3 = mul_a_y_1(&mul_a_y_1_arg, clnt);
-	if (result_3 == (a_mul_Y *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-#ifndef	DEBUG 
-	clnt_destroy (clnt);
-#endif	 /* DEBUG */
+	free(thread_s);
+	// Process rpc request and communicate with client
+	calc_prog_1(rpc_host, new_sockfd);
+	close(new_sockfd);
+	pthread_exit(NULL);
 }
 
 
-int main (int argc, char *argv[])
-{
-	char *host;
+int main (int argc, char *argv[]) {
+	char *rpc_host;
+	pthread_t t;	// Thread for every new user
+	int sockfd, new_sockfd, port_number, errno, option = 1;
+	socklen_t client_len;	// 
+	struct sockaddr_in client_addr, server_addr;	// Stuctures for client and server addresses
+	thread_server *arguments = NULL;
 
-	if (argc < 2) {
-		printf ("usage: %s server_host\n", argv[0]);
+	// Check number of received arguments
+	if (argc < 3) {
+		printf ("usage: %s <rpc_server_addr> <tcp_client_port\n", argv[0]);
 		exit (1);
 	}
-	host = argv[1];
-	calc_prog_1 (host);
-exit (0);
+
+	rpc_host = argv[1];	// ip of rpc server that threads will use
+	port_number = atoi(argv[2]);	// port of tcp server
+	// Creation of tcp socket
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0) {
+		error("Error opening socket");
+	}
+
+	// Allow reuse of port
+	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int));
+
+	bzero((char *) &server_addr, sizeof(server_addr));	// Clear server address structure
+	server_addr.sin_family = AF_INET;	// Define IPv4
+	server_addr.sin_addr.s_addr = INADDR_ANY; // Accept connections from any ip
+	server_addr.sin_port = htons(port_number);	// Define port number
+
+	// Connect socket with ip and port number
+	;
+	if (bind(sockfd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
+		error("Error binding socket");
+	}
+
+	listen(sockfd, 10);	// Socket server listens maximum 10 clients
+
+	printf("TCP server is listening on port %d and is forwarding to RPC server at %s", port_number, rpc_host);
+
+	// Get client size
+	client_len = sizeof(client_addr);
+
+	// Infinite loop for serving clients
+	while(1) {
+		new_sockfd = accept(sockfd, (struct sockaddr *) &client_addr, &client_len);	// Accept new connection
+		if (new_sockfd < 0) {
+			error("Error accepting new client");
+		}
+
+		// Memory allocation for threads
+		arguments = malloc(sizeof(thread_server));
+		if (!arguments) {
+			printf("Memory allocating error...\n");
+			close(new_sockfd);
+			continue;
+		}
+
+		// Pass socket sockfd to thread handler
+		arguments->sockfd = new_sockfd;
+		// Pass rpc server ip to thread handler
+		strcpy(arguments->rpc_host, rpc_host);
+
+		// Create thread for serving client
+		if (pthread_create(&t, NULL, handle_function, (void *)arguments) < 0) {
+			printf("Error creating new thread...\n");
+			free(arguments);
+			close(new_sockfd);
+			continue;
+		}
+
+		pthread_detach(t);	// Detach thread
+
+	}
+
+	close(sockfd);	// Close socket
 }

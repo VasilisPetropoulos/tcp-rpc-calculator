@@ -5,6 +5,7 @@
  */
 
 #include "calc.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 float *
@@ -14,14 +15,17 @@ avg_1_svc(a_Y *argp, struct svc_req *rqstp)
 	float sum = 0.0;
 
 	printf("Average function was called...\n");
+	// Check if vector Y is empty
 	if (argp->Y.Y_len == 0) {
 		printf("Error: Vector Y is empty...\n");
 		return NULL;
 	}
 
+	// Add every element of vector Y to variable sum
 	for (int i = 0; i < argp->Y.Y_len; i++) {
 		sum += argp->Y.Y_val[i];
 	}
+	// Calculation of average value
 	result = sum / argp->Y.Y_len;
 
 	return &result;
@@ -32,16 +36,18 @@ max_min_1_svc(a_Y *argp, struct svc_req *rqstp)
 {
 	printf("Max/Min function was called...\n");
 
-	// Check if array Y from client is empty
+	// Check if vector Y from client is empty
 	if (argp->Y.Y_len == 0) {
 		printf("Error: Vector Y is empty...\n");
 		return NULL;
 	}
 
+	// Initialize max/min value with the first element of vector Y
 	static int  result[2];
 	int max = argp->Y.Y_val[0];
 	int min = argp->Y.Y_val[0];
 	
+	// Find max and min values
 	for (int i = 1; i < argp->Y.Y_len; i++) {
 		if (max < argp->Y.Y_val[i]) {
 			max = argp->Y.Y_val[i];
@@ -52,6 +58,7 @@ max_min_1_svc(a_Y *argp, struct svc_req *rqstp)
 		}
 	}
 
+	// Initialize the array result of 2 integer elements with max/min values
 	result[0] = max;
 	result[1] = min;
 
@@ -61,13 +68,15 @@ max_min_1_svc(a_Y *argp, struct svc_req *rqstp)
 a_mul_Y *
 mul_a_y_1_svc(a_Y *argp, struct svc_req *rqstp)
 {
-	printf("Mul function was called...\n");
+	printf("Production function was called...\n");
 
 	static a_mul_Y  result;
+
 	if (result.a_mul_Y_val != NULL) {
 		free(result.a_mul_Y_val);
 	}
 
+	// Initialize result a_mul_Y structure with length and values of vector Y
 	result.a_mul_Y_len = argp->Y.Y_len;
 	result.a_mul_Y_val = (float *)malloc(result.a_mul_Y_len * sizeof(float));
 	if (!result.a_mul_Y_val) {
@@ -75,6 +84,7 @@ mul_a_y_1_svc(a_Y *argp, struct svc_req *rqstp)
 		return NULL;
 	}
 
+	// Execute production a*Y[i]
 	for (int i = 0; i < argp->Y.Y_len; i++) {
 		result.a_mul_Y_val[i] = argp->a * argp->Y.Y_val[i];
 	}
