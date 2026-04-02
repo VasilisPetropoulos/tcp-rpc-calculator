@@ -1,6 +1,12 @@
-# Αγνόησε τα object files
+# Ignore object files
 *.o
 
-# Αγνόησε τα τελικά εκτελέσιμα αρχεία
+# Ignore final executed files
 calc_client
 calc_server
+
+# Ignore pcgen generated files
+calc.h
+calc_clnt.c
+calc_svc.c
+calc_xdr.c
