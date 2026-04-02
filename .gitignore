@@ -10,3 +10,6 @@ calc.h
 calc_clnt.c
 calc_svc.c
 calc_xdr.c
+
+# Ignore .vscode
+.vscode/
